@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class WordObject : MonoBehaviour
+public class WordComponent : MonoBehaviour
 {
+
+    // Statics
     public readonly static Dictionary<char,KeyCode> keycodeDict =
         new Dictionary<char, KeyCode> {
             {'a', KeyCode.A },
@@ -34,38 +36,50 @@ public class WordObject : MonoBehaviour
             {'y', KeyCode.Y },
             {'z', KeyCode.Z }};
 
-    int letterIndex;
-    public string ourWord;
+    // Editor linkage
     public GameObject letterObjPrefab;
+
+
+    // Public members.
+    public string OurWord;
+
+    // Private members.
+    int letterIndex;
     Text[] letterObjects;
 
     private void OnEnable()
     {
-        if(ourWord == null || ourWord == "")
+        if(OurWord == null || OurWord == "")
         {
             Debug.LogError("Woke up a word that doesn't have a word assigned yet.");
             this.enabled = false;
             return;
         }
+
         if (letterObjects == null)
         {
-            letterObjects = new Text[ourWord.Length];
-            for (int i=0; i < ourWord.Length; i++)
+            letterObjects = new Text[OurWord.Length];
+
+            Transform cnvs = this.GetComponentInChildren<Canvas>().transform;
+
+            float wordStartX = OurWord.Length * -8.5f;
+
+            for (int i=0; i < OurWord.Length; i++)
             {
                 // Create the letter.
-                GameObject ltrGO = GameObject.Instantiate(letterObjPrefab, this.transform);
+                GameObject ltrGO = GameObject.Instantiate(letterObjPrefab, cnvs);
 
                 // Rename the game object.
-                ltrGO.name = i + " " + ourWord.Substring(i, 1);
+                ltrGO.name = i + " " + OurWord.Substring(i, 1);
 
                 // Position the letter.
-                ltrGO.transform.localPosition = new Vector3(17 * i, 0, 0);
+                ltrGO.GetComponent<RectTransform>().anchoredPosition = new Vector2(17 * (i + 0.5f) + wordStartX, 0);
 
                 // Grab the text component and store it.
                 letterObjects[i] = ltrGO.GetComponent<Text>();
 
                 // Display the correct letter.
-                letterObjects[i].text = ourWord.Substring(i, 1);
+                letterObjects[i].text = OurWord.Substring(i, 1);
             }
         }
     }
@@ -74,7 +88,7 @@ public class WordObject : MonoBehaviour
     void Update()
     {
         // Are we supposed to disappear?
-        if (letterIndex == ourWord.Length)
+        if (letterIndex == OurWord.Length)
         {
             // Release input lock.
             GameController.instance.LockedInWord = null;
@@ -82,7 +96,7 @@ public class WordObject : MonoBehaviour
             GameController.instance.RemoveWordFromPlay(this, true);
 
             // Destroy ourselves.
-            Destroy(this.gameObject);
+            this.enabled = false;
             return;
         }
     }
@@ -102,10 +116,10 @@ public class WordObject : MonoBehaviour
 
 
         // Did we complete the word?
-        if(letterIndex == ourWord.Length)
+        if(letterIndex == OurWord.Length)
         {
             // Score points.
-            GameController.instance.ScorePoints(ourWord.Length, false);
+            GameController.instance.ScorePoints(OurWord.Length, false);
 
             // TODO Shiny graphics maybe?
         }
@@ -114,7 +128,7 @@ public class WordObject : MonoBehaviour
 
     public KeyCode GetNextLetter() {
         // Grab the index.
-        string substr = ourWord.Substring(letterIndex, 1);
+        string substr = OurWord.Substring(letterIndex, 1);
 
         // Ensure it's lowercase.
         substr = substr.ToLower();

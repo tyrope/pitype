@@ -7,14 +7,14 @@ using UnityEngine.UI;
 public class GameController : MonoBehaviour
 {
     // Editor linkage.
-    public Transform canvas;
+    public Transform wordsParentTransform;
     public GameObject wordObjPrefab;
     public Text scoreIndicator;
     public StatTracker st;
 
     // Public variables.
     public static GameController instance;
-    public WordObject LockedInWord { get; set; }
+    public WordComponent LockedInWord { get; set; }
 
     // Private variables.
     int multiplier = 1;
@@ -24,7 +24,7 @@ public class GameController : MonoBehaviour
     int maxFails = 3; // TODO not hardcoded, but per level or something?
     float timeSinceLastSpawn = float.PositiveInfinity;
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0044:Add readonly modifier", Justification = "Not read only!")]
-    List<WordObject> ActiveWords = new List<WordObject>();
+    List<WordComponent> ActiveWords = new List<WordComponent>();
 
 
     // DEBUG variables.
@@ -65,7 +65,7 @@ public class GameController : MonoBehaviour
         debugprint.text = "DEBUG:\n"+timeSinceLastSpawn.ToString()+"\n"+Time.timeSinceLevelLoad.ToString()+"\n"+st.TotalFails;
         if (timeSinceLastSpawn > spawnFrequency)
         {
-            CreateWord(wordList[Random.Range(0, wordList.Length)], new Vector2(0, 0));
+            CreateWord(wordList[Random.Range(0, wordList.Length)]);
             timeSinceLastSpawn = 0;
         }
     }
@@ -76,7 +76,7 @@ public class GameController : MonoBehaviour
         // Let's make sure this is a keyboard event, specifically a NEW keystroke.
         if (Event.current.isKey && Event.current.type == EventType.KeyDown)
         {
-            if (WordObject.keycodeDict.ContainsValue(Event.current.keyCode))
+            if (WordComponent.keycodeDict.ContainsValue(Event.current.keyCode))
             {
                 //This is a letter. Do we have a locked-in word?
                 if (LockedInWord != null)
@@ -96,10 +96,17 @@ public class GameController : MonoBehaviour
                 else
                 {
                     // No active word, let's find one!
-                    foreach (WordObject word in ActiveWords)
+                    foreach (WordComponent word in ActiveWords)
                     {
+                        if(word.enabled == false)
+                        {
+                            // Don't grab onto words that are disabled.
+                            continue;
+                        }
+
                         if (word.GetNextLetter() == Event.current.keyCode)
                         {
+                            // This word starts with the typed letter, it's now active.
                             st.ChangeLettersTyped(1);
                             word.NextLetterTyped();
                             break;
@@ -114,20 +121,18 @@ public class GameController : MonoBehaviour
         }
     }
 
-    void CreateWord(string word, Vector2 pos)
+    void CreateWord(string word)
     {
         // Create Game Object.
-        GameObject go = GameObject.Instantiate(wordObjPrefab, canvas);
+        GameObject go = GameObject.Instantiate(wordObjPrefab, wordsParentTransform);
         // Name Game Object.
         go.name = word;
-        // Move Game Object.
-        go.transform.localPosition = new Vector3(pos.x, pos.y, 0);
 
         // Initiate the word controller script.
-        go.GetComponent<WordObject>().ourWord = word;
+        go.GetComponent<WordComponent>().OurWord = word;
 
         // Register the word with us.
-        ActiveWords.Add(go.GetComponent<WordObject>());
+        ActiveWords.Add(go.GetComponent<WordComponent>());
 
         // Track this new word.
         st.ChangeLettersSpawned(word.Length);
@@ -137,7 +142,7 @@ public class GameController : MonoBehaviour
         go.SetActive(true);
     }
 
-    public void RemoveWordFromPlay(WordObject go, bool completed)
+    public void RemoveWordFromPlay(WordComponent go, bool completed)
     {
         if (ActiveWords.Contains(go) == false)
         {
